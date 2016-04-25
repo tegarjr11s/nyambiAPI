@@ -27,6 +27,9 @@ $app->withFacades();
 
 $app->withEloquent();
 
+$app->configure('auth');
+
+
 /*
 |--------------------------------------------------------------------------
 | Register Container Bindings
@@ -67,6 +70,21 @@ $app->singleton(
 //     'auth' => App\Http\Middleware\Authenticate::class,
 // ]);
 
+$app->middleware([
+    \LucaDegasperi\OAuth2Server\Middleware\OAuthExceptionHandlerMiddleware::class
+]);
+
+$app->routeMiddleware([
+    'check-authorization-params' => \LucaDegasperi\OAuth2Server\Middleware\CheckAuthCodeRequestMiddleware::class,
+    'csrf' => \Laravel\Lumen\Http\Middleware\VerifyCsrfToken::class,
+    'oauth' => \LucaDegasperi\OAuth2Server\Middleware\OAuthMiddleware::class,
+    'oauth-client' => \LucaDegasperi\OAuth2Server\Middleware\OAuthClientOwnerMiddleware::class,
+    'oauth-user' => \LucaDegasperi\OAuth2Server\Middleware\OAuthUserOwnerMiddleware::class,
+]);
+
+class_alias(\LucaDegasperi\OAuth2Server\Facades\Authorizer::class, 'Authorizer');
+
+
 /*
 |--------------------------------------------------------------------------
 | Register Service Providers
@@ -79,11 +97,31 @@ $app->singleton(
 */
 
 $app->register(Dingo\Api\Provider\LumenServiceProvider::class);
-// $app->register(Dingo\Api\Provider\LumenServiceProvider::class);
-//$app->register('Dingo\Api\Provider\LumenServiceProvider');
-// $app->register(App\Providers\AppServiceProvider::class);
-// $app->register(App\Providers\AuthServiceProvider::class);
-// $app->register(App\Providers\EventServiceProvider::class);
+$app->register(\LucaDegasperi\OAuth2Server\Storage\FluentStorageServiceProvider::class);
+$app->register(\LucaDegasperi\OAuth2Server\OAuth2ServerServiceProvider::class);
+$app->register(App\Providers\AppServiceProvider::class);
+$app->register(App\Providers\OAuthServiceProvider::class);
+
+
+//format json response using fractal
+$app['Dingo\Api\Transformer\Factory']->setAdapter(function ($app){
+    $fractal = new League\Fractal\Manager;
+    $serializer = new League\Fractal\Serializer\JsonApiSerializer;
+    $fractal->setSerializer($serializer);
+
+    return new Dingo\Api\Transformer\Adapter\Fractal($fractal, 'include', ',', true);
+});
+
+//error format for error response
+$app['Dingo\Api\Exception\Handler']->setErrorFormat([
+    'error' => [
+        'message' => ':message',
+        'errors' => ':errors',
+        'code' => ':code',
+        'status_code' => ':status_code',
+        'debug' => ':debug'
+    ]
+]);
 
 /*
 |--------------------------------------------------------------------------
@@ -96,7 +134,6 @@ $app->register(Dingo\Api\Provider\LumenServiceProvider::class);
 |
 */
 
-//$api = $app['api.router'];
 
 $app->group(['namespace' => 'App\Http\Controllers'], function ($app) {
     require __DIR__.'/../app/Http/routes.php';

@@ -11,7 +11,8 @@
         "guzzlehttp/guzzle": "~6.0",
 		"dingo/api": "1.0.*@dev",
         "lukasoppermann/http-status": "^2.0",
-		"lucadegasperi/oauth2-server-laravel": "^5.0"
+		"lucadegasperi/oauth2-server-laravel": "5.1.*",
+        "wn/lumen-generators": "^1.1"
     },
     "require-dev": {
         "fzaninotto/faker": "~1.4",
